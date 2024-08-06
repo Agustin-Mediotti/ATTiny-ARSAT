@@ -2,7 +2,7 @@ import numpy as np
 import librosa
 import librosa.display
 import matplotlib.pyplot as plt
-from scipy.signal import find_peaks
+from scipy.signal import find_peaks, savgol_filter
 import sys
 
 def process_audio(filename):
@@ -14,6 +14,9 @@ def process_audio(filename):
     frequencies = librosa.fft_frequencies(sr=sr)
     times = librosa.frames_to_time(np.arange(S.shape[1]), sr=sr)
 
+    # Smooth the spectrogram to reduce noise
+    S_smooth = savgol_filter(S, 5, 2, axis=0)
+
     # Identify peaks in the spectrogram
     peak_frequencies = []
     peak_durations = []
@@ -22,8 +25,8 @@ def process_audio(filename):
     duration = 0
 
     for i in range(S.shape[1]):
-        spectrum = S[:, i]
-        peak_indices, _ = find_peaks(spectrum, height=np.max(spectrum) * 0.5)  # Detect peaks
+        spectrum = S_smooth[:, i]
+        peak_indices, _ = find_peaks(spectrum, height=np.max(spectrum) * 0.3)  # Adjusted threshold for peak detection
         if peak_indices.size > 0:
             peak_freq = frequencies[peak_indices[0]]
             if prev_peak is None:
@@ -68,8 +71,8 @@ def process_audio(filename):
     librosa.display.specshow(librosa.amplitude_to_db(S, ref=np.max), sr=sr, x_axis='time', y_axis='log')
     plt.scatter(times[:len(peak_frequencies)], peak_frequencies, color='red')
     plt.colorbar(format='%+2.0f dB')
-    plt.title('Spectrogram and detected peaks')
-    plt.savefig('spectrogram_and_peaks.png')
+    plt.title('Spectrogram and Detected Peaks')
+    plt.savefig('spectrogram.png')
     plt.close()  # Close figure to free memory
 
 if __name__ == "__main__":
